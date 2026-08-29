@@ -5,6 +5,7 @@ import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import { typeDefs } from "./graphql/typeDefs";
 import { resolvers } from "./graphql/resolvers";
+import { container } from "./services/container";
 
 async function startServer() {
   const app = express();
@@ -27,12 +28,14 @@ async function startServer() {
   // Todo o tráfego GraphQL (queries e mutations) passa por essa única rota.
   app.use(
     "/graphql",
-    // @ts-expect-error - tipagem do expressMiddleware ainda tem incompatibilidades conhecidas com Express 4
     expressMiddleware(apolloServer, {
       context: async ({ req }) => {
         // Aqui, futuramente, vamos extrair e validar o token do Auth0
         // enviado pelo frontend no header Authorization, usando verifyToken().
-        return { req };
+        //
+        // O container já vem com todos os serviços prontos — o index.ts
+        // não precisa saber COMO cada serviço é construído, só repassa.
+        return { req, ...container };
       },
     })
   );
