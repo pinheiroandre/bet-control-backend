@@ -1,0 +1,19 @@
+// Este arquivo define a conexão com o banco e (futuramente) os modelos de dados.
+// A modelagem real dos "lançamentos" será feita depois, junto com você.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de exemplo, só para validar que a conexão com o banco funciona.
+// Vamos substituir/expandir isso quando definirmos a modelagem real.
+model Status {
+  id        Int      @id @default(autoincrement())
+  message   String
+  createdAt DateTime @default(now())
+}

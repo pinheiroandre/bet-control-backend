@@ -1,0 +1,19 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Variáveis de ambiente (contém senhas e chaves — nunca deve ir para o Git)
+.env
+
+# Arquivos gerados pelo Prisma
+prisma/migrations/dev.db
+
+# Logs
+*.log
+
+# Sistema operacional / editor
+.DS_Store
+.vscode/
+.idea/
