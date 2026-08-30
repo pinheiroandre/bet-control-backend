@@ -1,41 +1,37 @@
+import "reflect-metadata";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
-import { typeDefs } from "./graphql/typeDefs";
-import { resolvers } from "./graphql/resolvers";
-import { container } from "./services/container";
+import { createSchema } from "./graphql/schema";
 
 async function startServer() {
   const app = express();
   const port = process.env.PORT || 4000;
 
-  // O ApolloServer é o motor que interpreta as queries/mutations GraphQL
-  // recebidas e as direciona para os resolvers corretos.
+  // buildSchema (dentro de createSchema) é assíncrono, por isso o "await" aqui.
+  const schema = await createSchema();
+
   const apolloServer = new ApolloServer({
-    typeDefs,
-    resolvers,
+    schema,
   });
 
-  // O Apollo precisa ser "iniciado" antes de ser conectado ao Express.
   await apolloServer.start();
 
   app.use(cors());
   app.use(express.json());
 
-  // Conectamos o Apollo ao Express na rota /graphql.
-  // Todo o tráfego GraphQL (queries e mutations) passa por essa única rota.
   app.use(
     "/graphql",
     expressMiddleware(apolloServer, {
       context: async ({ req }) => {
-        // Aqui, futuramente, vamos extrair e validar o token do Auth0
-        // enviado pelo frontend no header Authorization, usando verifyToken().
-        //
-        // O container já vem com todos os serviços prontos — o index.ts
-        // não precisa saber COMO cada serviço é construído, só repassa.
-        return { req, ...container };
+        // O context agora carrega só o que é "por requisição" (ex: o req
+        // em si, e futuramente o usuário autenticado via Auth0). Os
+        // serviços (BookmakerService, etc) NÃO viajam mais pelo context —
+        // eles chegam nos resolvers via injeção de dependência (tsyringe),
+        // igual ao seu AreaResolver de exemplo.
+        return { req };
       },
     })
   );
