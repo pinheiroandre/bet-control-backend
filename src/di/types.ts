@@ -3,4 +3,5 @@
 export const TYPES = {
   PrismaClient: Symbol.for("PrismaClient"),
   BookmakerService: Symbol.for("BookmakerService"),
+  TipsterService: Symbol.for("TipsterService"),
 };

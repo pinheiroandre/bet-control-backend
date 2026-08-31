@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { Decimal } from "@prisma/client/runtime/library";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { TYPES } from "../di/types";
 
 interface CreateBookmakerInput {
@@ -17,6 +17,13 @@ interface UpdateBookmakerInput {
   initialBalance?: number | Decimal;
 }
 
+// Em produção, o service recebe o PrismaClient normal. Nos testes de
+// integração com rollback, ele recebe o cliente de UMA transação
+// específica (Prisma.TransactionClient) — que tem os mesmos métodos de
+// modelo (bookmaker.create, .update, etc), só não pode abrir outra
+// transação por dentro dela.
+type PrismaOrTransaction = PrismaClient | Prisma.TransactionClient;
+
 // @injectable() diz ao tsyringe "esta classe pode ser criada automaticamente
 // pelo container". @inject(TYPES.PrismaClient) diz qual dependência
 // específica entregar no parâmetro do construtor.
@@ -26,9 +33,9 @@ interface UpdateBookmakerInput {
 // decorators não obrigam o uso do container.
 @injectable()
 export class BookmakerService {
-  private repository: PrismaClient["bookmaker"];
+  private repository: PrismaOrTransaction["bookmaker"];
 
-  constructor(@inject(TYPES.PrismaClient) private prisma: PrismaClient) {
+  constructor(@inject(TYPES.PrismaClient) private prisma: PrismaOrTransaction) {
     this.repository = this.prisma.bookmaker;
   }
 
@@ -43,10 +50,29 @@ export class BookmakerService {
     }
   }
 
+  private async validateExistent(description: string, id?: number) {
+    const existing = await this.repository.findFirst({
+      where: {
+        description: {
+          equals: description,
+          mode: "insensitive",
+        },
+        ...(id ? { id: { not: id } } : {}),
+      },
+    });
+
+    if (existing) {
+      throw new Error("Já existe uma casa de aposta com essa descrição");
+    }
+
+  }
+
   // Default services
   async create(input: CreateBookmakerInput) {
 
     this.validateRequired(input);
+
+    await this.validateExistent(input.description)
 
     return this.repository.create({
       data: {
@@ -59,8 +85,9 @@ export class BookmakerService {
 
   async update(input: UpdateBookmakerInput) {
     const existendBookmaker = await this.findById(input.id)
-
     const toUpdated = { ...existendBookmaker, ...input };
+
+    await this.validateExistent(toUpdated.description, toUpdated.id)
 
     this.validateRequired(toUpdated);
 
@@ -77,7 +104,9 @@ export class BookmakerService {
   async delete(id: number) {
     const existendBookmaker = await this.findById(id)
 
-    return this.repository.delete({ where: { id } });
+    await this.repository.delete({ where: { id } });
+
+    return existendBookmaker
   }
 
   async findById(id: number) {

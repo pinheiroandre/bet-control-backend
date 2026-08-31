@@ -9,3 +9,13 @@ CREATE TABLE "bookmaker" (
 
     CONSTRAINT "bookmaker_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateTable
+CREATE TABLE "tipster" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "tipster_pkey" PRIMARY KEY ("id")
+);

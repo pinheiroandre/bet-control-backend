@@ -1,295 +1,224 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
+import { withRollback, prisma } from "../../test/withRollback";
+import { loadBookmakersFixture } from "../../test/fixtures";
 import { BookmakerService } from "../bookmaker";
 
-// With dependency injection, we no longer mock the whole Prisma module.
-// Instead, we build a fake Prisma client and inject it directly into the
-// service's constructor — the service doesn't know (or care) whether it's
-// talking to the real Prisma or this fake one.
-function createPrismaMock() {
-  return {
-    bookmaker: {
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-    },
-  };
-}
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
-describe("BookmakerService", () => {
-  let prismaMock: ReturnType<typeof createPrismaMock>;
-  let service: BookmakerService;
-
-  beforeEach(() => {
-    prismaMock = createPrismaMock();
-    service = new BookmakerService(prismaMock as any);
-  });
-
+describe("BookmakerService (integration)", () => {
   describe("create", () => {
     it("should create a bookmaker with description, initialBalance and initialBalanceDate", async () => {
-      const input = {
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-      };
-      const expectedValues = { id: 1, ...input, createdAt: new Date(), updatedAt: new Date() };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
 
-      prismaMock.bookmaker.create.mockResolvedValue(expectedValues);
-
-      const result = await service.create(input);
-
-      expect(prismaMock.bookmaker.create).toHaveBeenCalledWith({
-        data: {
+        const result = await service.create({
           description: "Bet365",
           initialBalance: 100,
           initialBalanceDate: new Date("2026-08-01"),
-        },
+        });
+
+        expect(result.id).toBeDefined();
+        expect(result.description).toBe("Bet365");
+        expect(Number(result.initialBalance)).toBe(100);
       });
-      expect(result).toEqual(expectedValues);
     });
 
     it("should create a bookmaker with initialBalance zero when not informed", async () => {
-      const input = { description: "Betano", initialBalanceDate: new Date("2026-08-01") };
-      const expectedValues = {
-        id: 2,
-        description: "Betano",
-        initialBalance: 0,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
 
-      prismaMock.bookmaker.create.mockResolvedValue(expectedValues);
-
-      const result = await service.create(input);
-
-      expect(prismaMock.bookmaker.create).toHaveBeenCalledWith({
-        data: {
+        const result = await service.create({
           description: "Betano",
-          initialBalance: 0,
           initialBalanceDate: new Date("2026-08-01"),
-        },
+        });
+
+        expect(Number(result.initialBalance)).toBe(0);
       });
-      expect(result).toEqual(expectedValues);
     });
 
     it("shouldn't create a bookmaker without description", async () => {
-      await expect(
-        service.create({ description: "", initialBalanceDate: new Date("2026-08-01") })
-      ).rejects.toThrow("Descrição é obrigatória");
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+
+        await expect(
+          service.create({ description: "", initialBalanceDate: new Date("2026-08-01") })
+        ).rejects.toThrow("Descrição é obrigatória");
+      });
     });
 
-    it("shouldn't create a bookmaker without initialBalanceDate", async () => {
-      await expect(
-        service.create({ description: "Bet365", initialBalanceDate: undefined as any })
-      ).rejects.toThrow("Data do saldo inicial é obrigatória");
+    it("shouldn't create a bookmaker with a description that already exists", async () => {
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        await loadBookmakersFixture(tx); // inclui "Bet365"
+
+        await expect(
+          service.create({
+            description: 'Bet365',
+            initialBalanceDate: new Date("2026-08-01"),
+          })
+        ).rejects.toThrow("Já existe uma casa de aposta com essa descrição");
+      });
+    });
+
+    it("shouldn't create a bookmaker with a description that already exists, regardless of case", async () => {
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        await loadBookmakersFixture(tx); // inclui "Bet365"
+
+        await expect(
+          service.create({ description: "BET365", initialBalanceDate: new Date("2026-08-01") })
+        ).rejects.toThrow("Já existe uma casa de aposta com essa descrição");
+      });
     });
   });
 
   describe("update", () => {
     it("should update all fields of an existing bookmaker", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const input = {
-        id: 1,
-        description: "Bet365 Renamed",
-        initialBalance: 200,
-        initialBalanceDate: new Date("2026-08-05"),
-      };
-      const expectedValues = { ...existingRecord, ...input };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
-      prismaMock.bookmaker.update.mockResolvedValue(expectedValues);
+        console.log({ id: bet365.id})
 
-      const result = await service.update(input);
-
-      expect(prismaMock.bookmaker.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
-      expect(prismaMock.bookmaker.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: {
+        const result = await service.update({
+          id: bet365.id,
           description: "Bet365 Renamed",
-          initialBalance: 200,
-          initialBalanceDate: new Date("2026-08-05"),
-        },
+          initialBalance: 999,
+        });
+
+        expect(result.description).toBe("Bet365 Renamed");
+        expect(Number(result.initialBalance)).toBe(999);
       });
-      expect(result).toEqual(expectedValues);
     });
 
     it("should update only the informed fields, keeping the others unchanged", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const input = { id: 1, initialBalance: 300 };
-      const expectedValues = { ...existingRecord, initialBalance: 300 };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
-      prismaMock.bookmaker.update.mockResolvedValue(expectedValues);
+        const result = await service.update({ id: bet365.id, initialBalance: 300 });
 
-      const result = await service.update(input);
-
-      expect(prismaMock.bookmaker.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { initialBalance: 300 },
+        expect(result.description).toBe(bet365.description); // não mudou
+        expect(Number(result.initialBalance)).toBe(300);
       });
-      expect(result).toEqual(expectedValues);
     });
 
     it("shouldn't update a bookmaker that doesn't exist", async () => {
-      prismaMock.bookmaker.findUnique.mockResolvedValue(null);
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
 
-      await expect(service.update({ id: 999, description: "Bet365" })).rejects.toThrow(
-        "Casa de aposta não encontrada"
-      );
-
-      expect(prismaMock.bookmaker.update).not.toHaveBeenCalled();
+        await expect(
+          service.update({ id: 999999, description: "Bet365" })
+        ).rejects.toThrow("Casa de aposta não encontrada");
+      });
     });
 
-    it("shouldn't update a bookmaker with an empty description", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    it("shouldn't update keeping the same description of another existing bookmaker", async () => {
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365, betano] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
-
-      await expect(service.update({ id: 1, description: "" })).rejects.toThrow(
-        "Descrição é obrigatória"
-      );
-
-      expect(prismaMock.bookmaker.update).not.toHaveBeenCalled();
+        await expect(
+          service.update({ id: betano.id, description: bet365.description })
+        ).rejects.toThrow("Já existe uma casa de aposta com essa descrição");
+      });
     });
 
-    it("shouldn't update a bookmaker with a null initialBalanceDate", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    it("should update a bookmaker keeping its own current description unchanged", async () => {
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
+        // Não deve acusar conflito "consigo mesma" — o filtro precisa
+        // excluir o próprio id da checagem de duplicidade.
+        const result = await service.update({
+          id: bet365.id,
+          description: bet365.description,
+          initialBalance: 50,
+        });
 
-      await expect(
-        service.update({ id: 1, initialBalanceDate: null as any })
-      ).rejects.toThrow("Data do saldo inicial é obrigatória");
-
-      expect(prismaMock.bookmaker.update).not.toHaveBeenCalled();
+        expect(Number(result.initialBalance)).toBe(50);
+      });
     });
   });
 
   describe("delete", () => {
     it("should delete an existing bookmaker", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
-      prismaMock.bookmaker.delete.mockResolvedValue(existingRecord);
+        await service.delete(bet365.id);
 
-      const result = await service.delete(1);
-
-      expect(prismaMock.bookmaker.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
-      expect(prismaMock.bookmaker.delete).toHaveBeenCalledWith({ where: { id: 1 } });
-      expect(result).toEqual(existingRecord);
+        await expect(service.findById(bet365.id)).rejects.toThrow("Casa de aposta não encontrada");
+      });
     });
 
     it("shouldn't delete a bookmaker that doesn't exist", async () => {
-      prismaMock.bookmaker.findUnique.mockResolvedValue(null);
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
 
-      await expect(service.delete(999)).rejects.toThrow("Casa de aposta não encontrada");
-
-      expect(prismaMock.bookmaker.delete).not.toHaveBeenCalled();
+        await expect(service.delete(999999)).rejects.toThrow("Casa de aposta não encontrada");
+      });
     });
   });
 
   describe("findById", () => {
     it("should find a bookmaker by id", async () => {
-      const existingRecord = {
-        id: 1,
-        description: "Bet365",
-        initialBalance: 100,
-        initialBalanceDate: new Date("2026-08-01"),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        const [bet365] = await loadBookmakersFixture(tx);
 
-      prismaMock.bookmaker.findUnique.mockResolvedValue(existingRecord);
+        const result = await service.findById(bet365.id);
 
-      const result = await service.findById(1);
-
-      expect(prismaMock.bookmaker.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
-      expect(result).toEqual(existingRecord);
+        expect(result.description).toBe(bet365.description);
+      });
     });
 
     it("shouldn't find a bookmaker that doesn't exist", async () => {
-      prismaMock.bookmaker.findUnique.mockResolvedValue(null);
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
 
-      await expect(service.findById(999)).rejects.toThrow("Casa de aposta não encontrada");
+        await expect(service.findById(999999)).rejects.toThrow("Casa de aposta não encontrada");
+      });
     });
   });
 
   describe("findAll", () => {
     it("should find all bookmakers when no identifier is informed", async () => {
-      const records = [
-        { id: 1, description: "Bet365", initialBalance: 100, initialBalanceDate: new Date("2026-08-01"), createdAt: new Date(), updatedAt: new Date() },
-        { id: 2, description: "Betano", initialBalance: 200, initialBalanceDate: new Date("2026-08-01"), createdAt: new Date(), updatedAt: new Date() },
-      ];
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        await loadBookmakersFixture(tx); // Bet365 + Betano
 
-      prismaMock.bookmaker.findMany.mockResolvedValue(records);
+        const result = await service.findAll();
 
-      const result = await service.findAll({});
-
-      expect(prismaMock.bookmaker.findMany).toHaveBeenCalledWith({ where: {} });
-      expect(result).toEqual(records);
+        expect(result).toHaveLength(2);
+      });
     });
 
     it("should find bookmakers matching the identifier, regardless of position or case", async () => {
-      // "ano" should match "Betano" (LIKE %ano%, case-insensitive)
-      const records = [
-        { id: 2, description: "Betano", initialBalance: 200, initialBalanceDate: new Date("2026-08-01"), createdAt: new Date(), updatedAt: new Date() },
-      ];
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        await loadBookmakersFixture(tx); // Bet365 + Betano
 
-      prismaMock.bookmaker.findMany.mockResolvedValue(records);
+        const result = await service.findAll({ identifier: "ano" });
 
-      const result = await service.findAll({ identifier: "ano" });
-
-      expect(prismaMock.bookmaker.findMany).toHaveBeenCalledWith({
-        where: {
-          description: { contains: "ano", mode: "insensitive" },
-        },
+        expect(result).toHaveLength(1);
+        expect(result[0].description).toBe("Betano");
       });
-      expect(result).toEqual(records);
     });
 
     it("should return an empty array when no bookmaker matches the identifier", async () => {
-      prismaMock.bookmaker.findMany.mockResolvedValue([]);
+      await withRollback(async (tx) => {
+        const service = new BookmakerService(tx);
+        await loadBookmakersFixture(tx);
 
-      const result = await service.findAll({ identifier: "inexistente" });
+        const result = await service.findAll({ identifier: "inexistente" });
 
-      expect(result).toEqual([]);
+        expect(result).toEqual([]);
+      });
     });
   });
 });
