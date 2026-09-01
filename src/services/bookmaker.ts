@@ -11,7 +11,7 @@ interface CreateBookmakerInput {
 }
 
 interface UpdateBookmakerInput {
-  id: number;
+  id: string;
   description?: string;
   initialBalanceDate?: Date;
   initialBalance?: number | Decimal;
@@ -50,7 +50,7 @@ export class BookmakerService {
     }
   }
 
-  private async validateExistent(description: string, id?: number) {
+  private async validateExistent(description: string, id?: string) {
     const existing = await this.repository.findFirst({
       where: {
         description: {
@@ -101,7 +101,7 @@ export class BookmakerService {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const existendBookmaker = await this.findById(id)
 
     await this.repository.delete({ where: { id } });
@@ -109,7 +109,7 @@ export class BookmakerService {
     return existendBookmaker
   }
 
-  async findById(id: number) {
+  async findById(id: string) {
     const bookmaker = await this.repository.findUnique({
       where: { id },
     });

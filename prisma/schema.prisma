@@ -10,18 +10,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelo de exemplo, só para validar que a conexão com o banco funciona.
-model Status {
-  id        Int      @id @default(autoincrement())
-  message   String
-  createdAt DateTime @default(now())
-}
-
-// Represents a bookmaker (betting house) — e.g. Bet365, Betano, etc.
-// The current balance is NOT stored here: it is always calculated by summing
-// initialBalance with the related bet entries (income and expenses).
 model Bookmaker {
-  id                 Int      @id @default(autoincrement())
+  id                 String   @id @default(uuid()) @db.Uuid
   description        String
   initialBalance     Decimal  @default(0) @db.Decimal(10, 2) @map("initial_balance")
   initialBalanceDate DateTime @map("initial_balance_date") @db.Date
@@ -32,10 +22,10 @@ model Bookmaker {
 }
 
 model Tipster {
-  id                 Int      @id @default(autoincrement())
-  name               String
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("tipster")
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "bookmaker",
+    "rows": [
+      {
+        "id": "d91b64b7-a8c7-417e-bbbb-46e505cad17a",
+        "description": "Bet365",
+        "initialBalance": 100.00,
+        "initialBalanceDate": "2026-08-01"
+      },
+      {
+        "id": "0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7",
+        "description": "Betano",
+        "initialBalance": 200.00,
+        "initialBalanceDate": "2026-08-01"
+      }
+    ]
+  },
+  {
+    "name": "tipster",
+    "rows": [
+      {
+        "id": "3249daf5-2872-4d5a-a4ec-bf0e1af58671",
+        "name": "Rica"
+      },
+      {
+        "id": "2e40023f-cdb5-4378-89e2-5c8750c298b1",
+        "name": "Pei"
+      }
+    ]
+  }
+]

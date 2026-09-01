@@ -1,12 +1,20 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { withRollback, prisma } from "../../test/withRollback";
-import { loadBookmakersFixture } from "../../test/fixtures";
 import { BookmakerService } from "../bookmaker";
 
 afterAll(async () => {
   await prisma.$disconnect();
 });
 
+const ID_BET365 = "d91b64b7-a8c7-417e-bbbb-46e505cad17a"
+const INEXISTENT = '3e1551df-ea30-4d3f-8ec5-f687a14795d7'
+
+// Estes testes rodam contra o MESMO banco local usado em desenvolvimento —
+// não existe mais um banco de teste separado. Isso só é seguro porque cada
+// teste roda dentro de withRollback: tudo que ele criar/alterar/apagar é
+// desfeito ao final, então o baseline populado por "yarn setup"
+// (prisma/seed.ts, a partir de src/test/fixtures/bookmakers.json) nunca é
+// corrompido de um teste para o outro.
 describe("BookmakerService (integration)", () => {
   describe("create", () => {
     it("should create a bookmaker with description, initialBalance and initialBalanceDate", async () => {
@@ -14,13 +22,13 @@ describe("BookmakerService (integration)", () => {
         const service = new BookmakerService(tx);
 
         const result = await service.create({
-          description: "Bet365",
+          description: "Sportingbet",
           initialBalance: 100,
           initialBalanceDate: new Date("2026-08-01"),
         });
 
         expect(result.id).toBeDefined();
-        expect(result.description).toBe("Bet365");
+        expect(result.description).toBe("Sportingbet");
         expect(Number(result.initialBalance)).toBe(100);
       });
     });
@@ -30,7 +38,7 @@ describe("BookmakerService (integration)", () => {
         const service = new BookmakerService(tx);
 
         const result = await service.create({
-          description: "Betano",
+          description: "Sportingbet",
           initialBalanceDate: new Date("2026-08-01"),
         });
 
@@ -51,7 +59,6 @@ describe("BookmakerService (integration)", () => {
     it("shouldn't create a bookmaker with a description that already exists", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        await loadBookmakersFixture(tx); // inclui "Bet365"
 
         await expect(
           service.create({
@@ -65,7 +72,6 @@ describe("BookmakerService (integration)", () => {
     it("shouldn't create a bookmaker with a description that already exists, regardless of case", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        await loadBookmakersFixture(tx); // inclui "Bet365"
 
         await expect(
           service.create({ description: "BET365", initialBalanceDate: new Date("2026-08-01") })
@@ -78,12 +84,9 @@ describe("BookmakerService (integration)", () => {
     it("should update all fields of an existing bookmaker", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365] = await loadBookmakersFixture(tx);
-
-        console.log({ id: bet365.id})
 
         const result = await service.update({
-          id: bet365.id,
+          id: ID_BET365,
           description: "Bet365 Renamed",
           initialBalance: 999,
         });
@@ -96,11 +99,10 @@ describe("BookmakerService (integration)", () => {
     it("should update only the informed fields, keeping the others unchanged", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365] = await loadBookmakersFixture(tx);
 
-        const result = await service.update({ id: bet365.id, initialBalance: 300 });
+        const result = await service.update({ id: ID_BET365, initialBalance: 300 });
 
-        expect(result.description).toBe(bet365.description); // não mudou
+        expect(result.description).toBe("Bet365"); // não mudou
         expect(Number(result.initialBalance)).toBe(300);
       });
     });
@@ -110,7 +112,7 @@ describe("BookmakerService (integration)", () => {
         const service = new BookmakerService(tx);
 
         await expect(
-          service.update({ id: 999999, description: "Bet365" })
+          service.update({ id: INEXISTENT, description: "Bet365" })
         ).rejects.toThrow("Casa de aposta não encontrada");
       });
     });
@@ -118,10 +120,9 @@ describe("BookmakerService (integration)", () => {
     it("shouldn't update keeping the same description of another existing bookmaker", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365, betano] = await loadBookmakersFixture(tx);
 
         await expect(
-          service.update({ id: betano.id, description: bet365.description })
+          service.update({ id: ID_BET365, description: "Betano" })
         ).rejects.toThrow("Já existe uma casa de aposta com essa descrição");
       });
     });
@@ -129,13 +130,12 @@ describe("BookmakerService (integration)", () => {
     it("should update a bookmaker keeping its own current description unchanged", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365] = await loadBookmakersFixture(tx);
 
         // Não deve acusar conflito "consigo mesma" — o filtro precisa
         // excluir o próprio id da checagem de duplicidade.
         const result = await service.update({
-          id: bet365.id,
-          description: bet365.description,
+          id: ID_BET365,
+          description: "Bet365",
           initialBalance: 50,
         });
 
@@ -148,11 +148,10 @@ describe("BookmakerService (integration)", () => {
     it("should delete an existing bookmaker", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365] = await loadBookmakersFixture(tx);
 
-        await service.delete(bet365.id);
+        await service.delete(ID_BET365);
 
-        await expect(service.findById(bet365.id)).rejects.toThrow("Casa de aposta não encontrada");
+        await expect(service.findById(ID_BET365)).rejects.toThrow("Casa de aposta não encontrada");
       });
     });
 
@@ -160,7 +159,7 @@ describe("BookmakerService (integration)", () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
 
-        await expect(service.delete(999999)).rejects.toThrow("Casa de aposta não encontrada");
+        await expect(service.delete(INEXISTENT)).rejects.toThrow("Casa de aposta não encontrada");
       });
     });
   });
@@ -169,11 +168,10 @@ describe("BookmakerService (integration)", () => {
     it("should find a bookmaker by id", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        const [bet365] = await loadBookmakersFixture(tx);
 
-        const result = await service.findById(bet365.id);
+        const result = await service.findById(ID_BET365);
 
-        expect(result.description).toBe(bet365.description);
+        expect(result.description).toBe("Bet365");
       });
     });
 
@@ -181,18 +179,18 @@ describe("BookmakerService (integration)", () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
 
-        await expect(service.findById(999999)).rejects.toThrow("Casa de aposta não encontrada");
+        await expect(service.findById(INEXISTENT)).rejects.toThrow("Casa de aposta não encontrada");
       });
     });
   });
 
   describe("findAll", () => {
-    it("should find all bookmakers when no identifier is informed", async () => {
+    it("should include the seeded bookmakers when no identifier is informed", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        await loadBookmakersFixture(tx); // Bet365 + Betano
 
         const result = await service.findAll();
+        const descriptions = result.map((bookmaker) => bookmaker.description);
 
         expect(result).toHaveLength(2);
       });
@@ -201,7 +199,6 @@ describe("BookmakerService (integration)", () => {
     it("should find bookmakers matching the identifier, regardless of position or case", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        await loadBookmakersFixture(tx); // Bet365 + Betano
 
         const result = await service.findAll({ identifier: "ano" });
 
@@ -213,7 +210,6 @@ describe("BookmakerService (integration)", () => {
     it("should return an empty array when no bookmaker matches the identifier", async () => {
       await withRollback(async (tx) => {
         const service = new BookmakerService(tx);
-        await loadBookmakersFixture(tx);
 
         const result = await service.findAll({ identifier: "inexistente" });
 

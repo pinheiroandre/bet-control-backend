@@ -16,10 +16,8 @@
     "dev:up": "docker compose up -d",
     "dev:down": "docker compose down",
     "db:wait": "until docker exec controle-apostas-db pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done",
-    "db:create-test": "docker exec controle-apostas-db psql -U postgres -c \"CREATE DATABASE controle_apostas_test;\" 2>/dev/null || true",
-    "db:delete-test": "docker exec controle-apostas-db psql -U postgres -c \"DROP DATABASE controle_apostas_test;\" 2>/dev/null || true",
-    "db:migrate:test": "dotenv -e .env.test -- prisma migrate deploy",
-    "setup": "yarn dev:up && yarn db:wait && yarn db:delete-test && yarn prisma:generate && yarn db:create-test && yarn prisma:deploy && yarn db:migrate:test"
+    "seed": "tsx prisma/seed.ts",
+    "setup": "yarn dev:up && yarn db:wait && yarn prisma:generate && yarn prisma:deploy && yarn seed"
   },
   "dependencies": {
     "@apollo/server": "^4.11.0",
@@ -41,11 +39,9 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.7.0",
     "@vitest/coverage-v8": "^2.1.2",
-    "dotenv-cli": "^11.0.0",
     "prisma": "^5.20.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.2",
-    "vitest-mock-extended": "^5.1.1"
+    "vitest": "^2.1.2"
   }
 }

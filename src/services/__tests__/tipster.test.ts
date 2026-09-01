@@ -1,11 +1,13 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { withRollback, prisma } from "../../test/withRollback";
-import { loadTipsterFixture } from "../../test/fixtures";
 import { TipsterService } from "../tipster";
 
 afterAll(async () => {
   await prisma.$disconnect();
 });
+
+const RICA_ID = "3249daf5-2872-4d5a-a4ec-bf0e1af58671"
+const INEXISTENT = '3e1551df-ea30-4d3f-8ec5-f687a14795d7'
 
 describe("TipsterService (integration)", () => {
   describe("create", () => {
@@ -35,7 +37,6 @@ describe("TipsterService (integration)", () => {
     it("shouldn't create a tipster with a description that already exists", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx); // inclui "Rica"
 
         await expect(
           service.create({
@@ -48,7 +49,6 @@ describe("TipsterService (integration)", () => {
     it("shouldn't create a tipster with a description that already exists, regardless of case", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx); // inclui "Rica"
 
         await expect(
           service.create({ name: "RICA" })
@@ -61,10 +61,9 @@ describe("TipsterService (integration)", () => {
     it("should update all fields of an existing tipster", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
         const result = await service.update({
-          id: 1,
+          id: RICA_ID,
           name: "Rica Real_Tips",
         });
 
@@ -77,7 +76,7 @@ describe("TipsterService (integration)", () => {
         const service = new TipsterService(tx);
 
         await expect(
-          service.update({ id: 999999, name: "Chute inteligente" })
+          service.update({ id: INEXISTENT, name: "Chute inteligente" })
         ).rejects.toThrow("Tipster não encontrado");
       });
     });
@@ -85,10 +84,9 @@ describe("TipsterService (integration)", () => {
     it("shouldn't update keeping the same name of another existing tipster", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
         await expect(
-          service.update({ id: 1, name: 'Pei' })
+          service.update({ id: RICA_ID, name: 'Pei' })
         ).rejects.toThrow("Já existe um tipster com esse nome");
       });
     });
@@ -96,12 +94,9 @@ describe("TipsterService (integration)", () => {
     it("should update a tipster keeping its own current description unchanged", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
-        // Não deve acusar conflito "consigo mesma" — o filtro precisa
-        // excluir o próprio id da checagem de duplicidade.
         const result = await service.update({
-          id: 2,
+          id: "2e40023f-cdb5-4378-89e2-5c8750c298b1",
           name: 'Pei',
         });
 
@@ -114,11 +109,10 @@ describe("TipsterService (integration)", () => {
     it("should delete an existing tipster", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
-        await service.delete(1);
+        await service.delete(RICA_ID);
 
-        await expect(service.findById(1)).rejects.toThrow("Tipster não encontrado");
+        await expect(service.findById(RICA_ID)).rejects.toThrow("Tipster não encontrado");
       });
     });
 
@@ -126,7 +120,7 @@ describe("TipsterService (integration)", () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
 
-        await expect(service.delete(999999)).rejects.toThrow("Tipster não encontrado");
+        await expect(service.delete(INEXISTENT)).rejects.toThrow("Tipster não encontrado");
       });
     });
   });
@@ -135,9 +129,8 @@ describe("TipsterService (integration)", () => {
     it("should find a tipster by id", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
-        const result = await service.findById(1);
+        const result = await service.findById(RICA_ID);
 
         expect(result.name).toBe('Rica');
       });
@@ -147,7 +140,7 @@ describe("TipsterService (integration)", () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
 
-        await expect(service.findById(999999)).rejects.toThrow("Tipster não encontrado");
+        await expect(service.findById(INEXISTENT)).rejects.toThrow("Tipster não encontrado");
       });
     });
   });
@@ -156,7 +149,6 @@ describe("TipsterService (integration)", () => {
     it("should find all tipsters when no identifier is informed", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx); // Bet365 + Betano
 
         const result = await service.findAll();
 
@@ -167,7 +159,6 @@ describe("TipsterService (integration)", () => {
     it("should find tipsters matching the identifier, regardless of position or case", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx); // Bet365 + Betano
 
         const result = await service.findAll({ identifier: "ica" });
 
@@ -179,7 +170,6 @@ describe("TipsterService (integration)", () => {
     it("should return an empty array when no tipster matches the identifier", async () => {
       await withRollback(async (tx) => {
         const service = new TipsterService(tx);
-        await loadTipsterFixture(tx);
 
         const result = await service.findAll({ identifier: "inexistente" });
 

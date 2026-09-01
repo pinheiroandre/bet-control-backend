@@ -5,9 +5,9 @@ export default defineConfig({
     // "node" porque este é um backend — não precisamos simular um navegador (jsdom).
     environment: "node",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    // Testes de integração compartilham o mesmo banco de teste — rodar em
-    // paralelo poderia fazer um teste apagar dados que outro ainda está usando.
+    // Todos os testes rodam contra o mesmo banco local (não há mais banco
+    // de teste separado) — mantemos serial para evitar que transações de
+    // arquivos de teste diferentes se cruzem de forma confusa.
     fileParallelism: false,
   },
 });

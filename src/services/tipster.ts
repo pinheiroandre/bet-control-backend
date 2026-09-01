@@ -8,7 +8,7 @@ interface CreateTipsterInput {
 }
 
 interface UpdateTipsterInput {
-  id: number;
+  id: string;
   name?: string;
 }
 
@@ -29,7 +29,7 @@ export class TipsterService {
     }
   }
 
-  private async validateExistent(name: string, id?: number) {
+  private async validateExistent(name: string, id?: string) {
     const existing = await this.repository.findFirst({
       where: {
         name: {
@@ -76,7 +76,7 @@ export class TipsterService {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const existendTipster = await this.findById(id)
 
     await this.repository.delete({ where: { id } });
@@ -84,7 +84,7 @@ export class TipsterService {
     return existendTipster
   }
 
-  async findById(id: number) {
+  async findById(id: string) {
     const tipster = await this.repository.findUnique({
       where: { id },
     });
