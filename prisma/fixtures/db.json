@@ -28,5 +28,22 @@
         "name": "Pei"
       }
     ]
+  },
+  {
+    "name": "bet",
+    "rows": [
+      {
+        "id": "d0451181-5d23-4257-a133-984716040fca",
+        "description": "Fla x Flu: Chutes + Cartão",
+        "date": "2026-09-01",
+        "stake": 20,
+        "odd": 3.90,
+        "status": "PENDING",
+        "stakeIsBonus": false,
+        "payoutIsBonus": false,
+        "observation": "Apostar padrão, foi uma mistura de indicações",
+        "bookmakerId": "0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7"
+      }
+    ]
   }
 ]

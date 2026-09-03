@@ -18,6 +18,8 @@ model Bookmaker {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
+  bets Bet[]
+
   @@map("bookmaker")
 }
 
@@ -27,5 +29,46 @@ model Tipster {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  bets Bet[]
+
   @@map("tipster")
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  VOID
+  CASHED_OUT
+  HALF_WON
+  HALF_LOST
+
+  @@map("bet_status")
+}
+
+model Bet {
+  id            String    @id @default(uuid()) @db.Uuid
+  description   String
+  date          DateTime  @db.Date
+  stake         Decimal   @db.Decimal(10, 2)
+  payout        Decimal?  @db.Decimal(10, 2)
+  odd           Decimal?  @db.Decimal(10, 3)
+  status        BetStatus @default(PENDING)
+  resolvedAt    DateTime? @map("resolved_at")
+  stakeIsBonus  Boolean   @default(false) @map("stake_is_bonus")
+  payoutIsBonus Boolean   @default(false) @map("payout_is_bonus")
+  observation   String?
+  bookmakerId   String    @map("bookmaker") @db.Uuid
+  tipsterId     String?   @map("tipster") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  bookmaker Bookmaker @relation(fields: [bookmakerId], references: [id])
+  tipster   Tipster?  @relation(fields: [tipsterId], references: [id])
+
+  @@index([bookmakerId])
+  @@index([tipsterId])
+  @@index([date])
+  @@index([status])
+  @@map("bet")
 }
