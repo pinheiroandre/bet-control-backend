@@ -34,25 +34,79 @@ export class BetService {
     }
 
     // Auxiliar functions
-    private validateRequired(input: CreateBetInput) {
-        if (!input.description || input.description.trim() === '') {
-            throw new Error('Descrição é obrigatória')
+    private validateCreation(input: CreateBetInput) {
+        const zeroDecimal = new Decimal(0)
+        const payout = input.payout || zeroDecimal
+
+        if (!!input.payout && !input.status) {
+            throw new Error(
+                'O status da aposta é obrigatório quando possui retorno'
+            )
+        }
+
+        if (payout > zeroDecimal && input.status === BetStatus.PENDING) {
+            throw new Error(
+                'O status da aposta não pode ser pendente quando possui retorno'
+            )
+        }
+
+        if (payout > zeroDecimal && input.status === BetStatus.LOST) {
+            throw new Error(
+                'O status da aposta não pode ser perdido quando possui retorno'
+            )
+        }
+
+        if (payout > zeroDecimal && input.status === BetStatus.VOID) {
+            throw new Error(
+                'Apostas anuladas não devem ter valor de pagamento informando pelo usuário'
+            )
+        }
+
+        if (payout <= zeroDecimal && input.status === BetStatus.CASHED_OUT) {
+            throw new Error(
+                'Aposta do tipo cashout necessita de valor de pagamento'
+            )
+        }
+
+        if (payout <= zeroDecimal && input.status === BetStatus.HALF_WON) {
+            throw new Error(
+                'Aposta do tipo meio ganha necessita de valor de pagamento'
+            )
+        }
+
+        if (payout <= zeroDecimal && input.status === BetStatus.HALF_LOST) {
+            throw new Error(
+                'Aposta do tipo meio perdida necessita de valor de pagamento'
+            )
         }
     }
 
     private normalizeBet(bet: NormalizeBet) {
-        return {
+        const completeBet = {
             ...bet,
             payout: bet.payout ?? undefined,
             odd: bet.odd ?? undefined,
             observation: bet.observation ?? undefined,
             tipsterId: bet.tipsterId ?? undefined
         }
+
+        const getPayout = () => {
+            if (completeBet.status === BetStatus.VOID) {
+                return completeBet.stake
+            }
+
+            return completeBet.payout
+        }
+
+        return {
+            ...completeBet,
+            payout: getPayout()
+        }
     }
 
     // Default services
     async create(input: CreateBetInput) {
-        this.validateRequired(input)
+        this.validateCreation(input)
 
         const bet = this.normalizeBet(input)
 
@@ -81,9 +135,10 @@ export class BetService {
             resolvedAt: getResolvedAt()
         }
 
-        const bet = this.normalizeBet(toUpdated)
+        // FIX-ME: Fix type because null is not undefined
+        this.validateCreation(toUpdated as unknown as CreateBetInput)
 
-        this.validateRequired(bet)
+        const bet = this.normalizeBet(toUpdated)
 
         return this.repository.update({
             where: { id: input.id },
