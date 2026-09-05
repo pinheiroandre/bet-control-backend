@@ -18,7 +18,9 @@ model Bookmaker {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  bets Bet[]
+  bets           Bet[]
+  transactions   Transaction[]
+  balanceClosings BalanceClosing[]
 
   @@map("bookmaker")
 }
@@ -71,4 +73,56 @@ model Bet {
   @@index([date])
   @@index([status])
   @@map("bet")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BONUS_CREDIT
+
+  @@map("transaction_type")
+}
+
+model Transaction {
+  id          String          @id @default(uuid()) @db.Uuid
+  type        TransactionType
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime        @db.Date
+  description String?
+  bookmakerId String          @map("bookmaker") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  bookmaker Bookmaker @relation(fields: [bookmakerId], references: [id])
+
+  @@index([bookmakerId])
+  @@index([date])
+  @@index([type])
+  @@map("transaction")
+}
+
+model MonthClosing {
+  id             String   @id @default(uuid()) @db.Uuid
+  referenceMonth DateTime @unique @map("reference_month") @db.Date
+  closedAt       DateTime @default(now()) @map("closed_at")
+
+  balanceClosings BalanceClosing[]
+
+  @@map("month_closing")
+}
+
+model BalanceClosing {
+  id             String   @id @default(uuid()) @db.Uuid
+  monthClosingId String   @map("month_closing") @db.Uuid
+  bookmakerId    String   @map("bookmaker") @db.Uuid
+  realBalance    Decimal  @db.Decimal(10, 2) @map("real_balance")
+  bonusBalance   Decimal  @db.Decimal(10, 2) @map("bonus_balance")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  monthClosing MonthClosing @relation(fields: [monthClosingId], references: [id])
+  bookmaker    Bookmaker    @relation(fields: [bookmakerId], references: [id])
+
+  @@unique([monthClosingId, bookmakerId])
+  @@index([bookmakerId])
+  @@map("balance_closing")
 }

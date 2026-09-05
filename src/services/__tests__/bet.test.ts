@@ -60,6 +60,15 @@ describe('BetService (integration)', () => {
             await withRollback(async tx => {
                 const service = new BetService(tx)
 
+                await tx.transaction.create({
+                    data: {
+                        type: 'BONUS_CREDIT',
+                        amount: 50,
+                        date: new Date('2026-08-01'),
+                        bookmakerId: BET365_ID
+                    }
+                })
+
                 const result = await service.create({
                     ...NEW_BET,
                     stakeIsBonus: true
@@ -174,7 +183,7 @@ describe('BetService (integration)', () => {
             })
         })
 
-        it.skip("shouldn't create a bet without balance for the bookmaker", async () => {
+        it("shouldn't create a bet without balance for the bookmaker", async () => {
             await withRollback(async tx => {
                 const service = new BetService(tx)
 
@@ -190,7 +199,7 @@ describe('BetService (integration)', () => {
 
                 await expect(
                     service.create({ ...NEW_BET, bookmakerId: INEXISTENT })
-                ).rejects.toThrowError('bet_bookmaker_fkey (index)')
+                ).rejects.toThrowError('Casa de aposta não encontrada')
             })
         })
 
@@ -204,7 +213,7 @@ describe('BetService (integration)', () => {
             })
         })
 
-        it.skip("shouldn't create a bet without bonus balance for the bookmaker", async () => {
+        it("shouldn't create a bet without bonus balance for the bookmaker", async () => {
             await withRollback(async tx => {
                 const service = new BetService(tx)
 
@@ -310,6 +319,32 @@ describe('BetService (integration)', () => {
                 )
             })
         })
+
+        it('should keep the refund as bonus when a bonus-staked bet is voided', async () => {
+            await withRollback(async tx => {
+                const service = new BetService(tx)
+
+                // Sem isso, não existe saldo de bônus disponível pra apostar.
+                await tx.transaction.create({
+                    data: {
+                        type: 'BONUS_CREDIT',
+                        amount: 50,
+                        date: new Date('2026-09-01'),
+                        bookmakerId: BET365_ID
+                    }
+                })
+
+                const result = await service.create({
+                    ...NEW_BET,
+                    bookmakerId: BET365_ID,
+                    stakeIsBonus: true,
+                    status: 'VOID'
+                })
+
+                expect(Number(result.payout)).toBe(Number(result.stake))
+                expect(result.payoutIsBonus).toBe(true)
+            })
+        })
     })
 
     describe('update', () => {
@@ -405,7 +440,7 @@ describe('BetService (integration)', () => {
                         id: EXISTENT_BET,
                         bookmakerId: INEXISTENT
                     })
-                ).rejects.toThrow('bet_bookmaker_fkey (index)')
+                ).rejects.toThrow('Casa de aposta não encontrada')
             })
         })
 
@@ -419,7 +454,7 @@ describe('BetService (integration)', () => {
             })
         })
 
-        it.skip("shouldn't update a bet with a stake beyond the bookmaker's balance", async () => {
+        it("shouldn't update a bet with a stake beyond the bookmaker's balance", async () => {
             await withRollback(async tx => {
                 const service = new BetService(tx)
 
@@ -511,6 +546,27 @@ describe('BetService (integration)', () => {
 
                 await expect(service.delete(INEXISTENT)).rejects.toThrow(
                     'Aposta não encontrada'
+                )
+            })
+        })
+
+        it("shouldn't delete a bet dated in a month that is already closed", async () => {
+            await withRollback(async tx => {
+                const service = new BetService(tx)
+
+                // Criado direto no banco (bypass do service), simulando um
+                // registro legado datado de julho — mês já fechado no seed.
+                const legacyBet = await tx.bet.create({
+                    data: {
+                        description: 'Aposta antiga',
+                        date: new Date('2026-07-10'),
+                        stake: new Decimal(10),
+                        bookmakerId: BET365_ID
+                    }
+                })
+
+                await expect(service.delete(legacyBet.id)).rejects.toThrow(
+                    'Não é possível lançar ou editar em um mês já fechado'
                 )
             })
         })

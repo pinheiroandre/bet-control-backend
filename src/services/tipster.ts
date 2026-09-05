@@ -47,6 +47,20 @@ export class TipsterService {
         }
     }
 
+    // Impede excluir um tipster que já foi usado em alguma aposta — sem
+    // isso, o Postgres recusaria com um erro cru de chave estrangeira.
+    private async validateNoRelatedRecords(id: string) {
+        const betCount = await this.prisma.bet.count({
+            where: { tipsterId: id }
+        })
+
+        if (betCount > 0) {
+            throw new Error(
+                'Não é possível excluir um tipster que já possui apostas vinculadas'
+            )
+        }
+    }
+
     // Default services
     async create(input: CreateTipsterInput) {
         this.validateRequired(input)
@@ -78,6 +92,8 @@ export class TipsterService {
 
     async delete(id: string) {
         const existendTipster = await this.findById(id)
+
+        await this.validateNoRelatedRecords(id)
 
         await this.repository.delete({ where: { id } })
 

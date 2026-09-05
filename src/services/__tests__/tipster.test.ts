@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library'
 import { describe, it, expect, afterAll } from 'vitest'
 import { withRollback, prisma } from '../../test/withRollback'
 import { TipsterService } from '../tipster'
@@ -127,6 +128,29 @@ describe('TipsterService (integration)', () => {
 
                 await expect(service.delete(INEXISTENT)).rejects.toThrow(
                     'Tipster não encontrado'
+                )
+            })
+        })
+
+        it("shouldn't delete a tipster that already has bets linked", async () => {
+            await withRollback(async tx => {
+                const service = new TipsterService(tx)
+                const pei = await tx.tipster.findFirstOrThrow({
+                    where: { name: 'Pei' }
+                })
+
+                await tx.bet.create({
+                    data: {
+                        description: 'Aposta indicada',
+                        date: new Date('2026-09-05'),
+                        stake: new Decimal(10),
+                        bookmakerId: 'd91b64b7-a8c7-417e-bbbb-46e505cad17a',
+                        tipsterId: pei.id
+                    }
+                })
+
+                await expect(service.delete(pei.id)).rejects.toThrow(
+                    'Não é possível excluir um tipster que já possui apostas vinculadas'
                 )
             })
         })

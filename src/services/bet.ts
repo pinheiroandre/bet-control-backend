@@ -4,6 +4,8 @@ import { Decimal } from '@prisma/client/runtime/library'
 import { injectable, inject } from 'tsyringe'
 import { TYPES } from '../di/types'
 import { CreateBetInput, UpdateBetInput } from '../graphql/types/bet'
+import { calculateBalance } from './balanceCalculator'
+import { assertMonthIsOpen } from './monthClosingGuard'
 
 type NormalizeBet = {
     id?: string
@@ -81,6 +83,35 @@ export class BetService {
         }
     }
 
+    // Reaproveita o cálculo de saldo compartilhado (que já usa o
+    // BalanceClosing mais recente como base, em vez de somar o histórico
+    // inteiro sempre).
+    private async validateBalance(
+        input: {
+            bookmakerId: string
+            stake: Decimal
+            stakeIsBonus?: boolean
+            date: Date
+        },
+        excludeBetId?: string
+    ) {
+        const isBonus = !!input.stakeIsBonus
+        const available = await calculateBalance(this.prisma, {
+            bookmakerId: input.bookmakerId,
+            isBonus,
+            asOf: input.date,
+            excludeBetId
+        })
+
+        if (input.stake.greaterThan(available)) {
+            throw new Error(
+                isBonus
+                    ? 'Saldo de bonus insuficiente para essa aposta'
+                    : 'Saldo insuficiente para essa aposta'
+            )
+        }
+    }
+
     private normalizeBet(bet: NormalizeBet) {
         const completeBet = {
             ...bet,
@@ -98,15 +129,35 @@ export class BetService {
             return completeBet.payout
         }
 
+        const getPayoutIsBonus = () => {
+            if (completeBet.status === BetStatus.VOID) {
+                return completeBet.stakeIsBonus
+            }
+
+            return completeBet.payoutIsBonus
+        }
+
         return {
             ...completeBet,
-            payout: getPayout()
+            payout: getPayout(),
+            payoutIsBonus: getPayoutIsBonus()
         }
     }
 
     // Default services
     async create(input: CreateBetInput) {
         this.validateCreation(input)
+
+        const date = new Date(input.date)
+
+        await assertMonthIsOpen(this.prisma, date)
+
+        await this.validateBalance({
+            bookmakerId: input.bookmakerId,
+            stake: input.stake,
+            stakeIsBonus: input.stakeIsBonus,
+            date
+        })
 
         const bet = this.normalizeBet(input)
 
@@ -138,6 +189,20 @@ export class BetService {
         // FIX-ME: Fix type because null is not undefined
         this.validateCreation(toUpdated as unknown as CreateBetInput)
 
+        const date = new Date(toUpdated.date)
+
+        await assertMonthIsOpen(this.prisma, date)
+
+        await this.validateBalance(
+            {
+                bookmakerId: toUpdated.bookmakerId,
+                stake: toUpdated.stake,
+                stakeIsBonus: toUpdated.stakeIsBonus,
+                date
+            },
+            input.id
+        )
+
         const bet = this.normalizeBet(toUpdated)
 
         return this.repository.update({
@@ -148,6 +213,8 @@ export class BetService {
 
     async delete(id: string) {
         const existendBookmaker = await this.findById(id)
+
+        await assertMonthIsOpen(this.prisma, existendBookmaker.date)
 
         await this.repository.delete({ where: { id } })
 

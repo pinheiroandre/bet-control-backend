@@ -1,8 +1,13 @@
 import 'reflect-metadata'
 import { PrismaClient } from '@prisma/client'
 import { container } from 'tsyringe'
+import { BalanceService } from '../services/balance'
+import { BalanceClosingService } from '../services/balanceClosing'
 import { BookmakerService } from '../services/bookmaker'
+import { ClosingOrchestratorService } from '../services/closingOrchestrator'
+import { MonthClosingService } from '../services/monthClosing'
 import { TipsterService } from '../services/tipster'
+import { TransactionService } from '../services/transaction'
 import { TYPES } from './types'
 
 // Uma única instância de PrismaClient para toda a aplicação.
@@ -16,5 +21,14 @@ container.register(TYPES.PrismaClient, { useValue: prisma })
 // registrado acima).
 container.register(TYPES.BookmakerService, { useClass: BookmakerService })
 container.register(TYPES.TipsterService, { useClass: TipsterService })
+container.register(TYPES.MonthClosingService, { useClass: MonthClosingService })
+container.register(TYPES.BalanceClosingService, {
+    useClass: BalanceClosingService
+})
+container.register(TYPES.TransactionService, { useClass: TransactionService })
+container.register(TYPES.BalanceService, { useClass: BalanceService })
+container.register(TYPES.ClosingOrchestratorService, {
+    useClass: ClosingOrchestratorService
+})
 
 export { container }

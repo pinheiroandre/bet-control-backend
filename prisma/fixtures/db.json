@@ -45,5 +45,14 @@
         "bookmakerId": "0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7"
       }
     ]
+  },
+  {
+    "name": "monthClosing",
+    "rows": [
+      {
+        "id": "7c2a8f3e-8b1a-4c9e-9d2a-1f4b6c7d8e9f",
+        "referenceMonth": "2026-07-01"
+      }
+    ]
   }
 ]

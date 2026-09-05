@@ -181,6 +181,37 @@ describe('BookmakerService (integration)', () => {
                 )
             })
         })
+
+        it("shouldn't delete a bookmaker that already has bets", async () => {
+            await withRollback(async tx => {
+                const service = new BookmakerService(tx)
+
+                await expect(
+                    service.delete('0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7')
+                ).rejects.toThrow(
+                    'Não é possível excluir uma casa de aposta que já possui lançamentos'
+                )
+            })
+        })
+
+        it("shouldn't delete a bookmaker that already has transactions", async () => {
+            await withRollback(async tx => {
+                const service = new BookmakerService(tx)
+
+                await tx.transaction.create({
+                    data: {
+                        type: 'DEPOSIT',
+                        amount: 50,
+                        date: new Date('2026-09-05'),
+                        bookmakerId: ID_BET365
+                    }
+                })
+
+                await expect(service.delete(ID_BET365)).rejects.toThrow(
+                    'Não é possível excluir uma casa de aposta que já possui lançamentos'
+                )
+            })
+        })
     })
 
     describe('findById', () => {

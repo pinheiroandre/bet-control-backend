@@ -17,20 +17,8 @@ interface UpdateBookmakerInput {
     initialBalance?: number | Decimal
 }
 
-// Em produção, o service recebe o PrismaClient normal. Nos testes de
-// integração com rollback, ele recebe o cliente de UMA transação
-// específica (Prisma.TransactionClient) — que tem os mesmos métodos de
-// modelo (bookmaker.create, .update, etc), só não pode abrir outra
-// transação por dentro dela.
 type PrismaOrTransaction = PrismaClient | Prisma.TransactionClient
 
-// @injectable() diz ao tsyringe "esta classe pode ser criada automaticamente
-// pelo container". @inject(TYPES.PrismaClient) diz qual dependência
-// específica entregar no parâmetro do construtor.
-//
-// Importante: nada impede de continuar instanciando na mão também
-// (new BookmakerService(prismaMock)), como já fazemos nos testes — os
-// decorators não obrigam o uso do container.
 @injectable()
 export class BookmakerService {
     private repository: PrismaOrTransaction['bookmaker']
@@ -41,7 +29,6 @@ export class BookmakerService {
         this.repository = this.prisma.bookmaker
     }
 
-    // Auxiliar functions
     private validateRequired(input: CreateBookmakerInput) {
         if (!input.description || input.description.trim() === '') {
             throw new Error('Descrição é obrigatória')
@@ -55,10 +42,7 @@ export class BookmakerService {
     private async validateExistent(description: string, id?: string) {
         const existing = await this.repository.findFirst({
             where: {
-                description: {
-                    equals: description,
-                    mode: 'insensitive'
-                },
+                description: { equals: description, mode: 'insensitive' },
                 ...(id ? { id: { not: id } } : {})
             }
         })
@@ -68,7 +52,23 @@ export class BookmakerService {
         }
     }
 
-    // Default services
+    // Impede excluir uma bookmaker que já tem histórico — sem isso, o
+    // Postgres recusaria com um erro cru de chave estrangeira.
+    private async validateNoRelatedRecords(id: string) {
+        const [betCount, transactionCount, balanceClosingCount] =
+            await Promise.all([
+                this.prisma.bet.count({ where: { bookmakerId: id } }),
+                this.prisma.transaction.count({ where: { bookmakerId: id } }),
+                this.prisma.balanceClosing.count({ where: { bookmakerId: id } })
+            ])
+
+        if (betCount > 0 || transactionCount > 0 || balanceClosingCount > 0) {
+            throw new Error(
+                'Não é possível excluir uma casa de aposta que já possui lançamentos'
+            )
+        }
+    }
+
     async create(input: CreateBookmakerInput) {
         this.validateRequired(input)
 
@@ -104,15 +104,15 @@ export class BookmakerService {
     async delete(id: string) {
         const existendBookmaker = await this.findById(id)
 
+        await this.validateNoRelatedRecords(id)
+
         await this.repository.delete({ where: { id } })
 
         return existendBookmaker
     }
 
     async findById(id: string) {
-        const bookmaker = await this.repository.findUnique({
-            where: { id }
-        })
+        const bookmaker = await this.repository.findUnique({ where: { id } })
 
         if (!bookmaker) {
             throw new Error('Casa de aposta não encontrada')
@@ -121,9 +121,6 @@ export class BookmakerService {
         return bookmaker
     }
 
-    // Busca todas as bookmakers. Se "identifier" for informado, filtra pela
-    // description usando LIKE (contains) case-insensitive — ex: "ano" encontra
-    // "Betano", em qualquer posição do texto e independente de maiúsculas.
     async findAll(params?: { identifier?: string }) {
         return this.repository.findMany({
             where: params?.identifier

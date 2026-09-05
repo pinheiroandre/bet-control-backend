@@ -13,6 +13,23 @@ interface TableFixture {
     rows: Record<string, unknown>[]
 }
 
+// Descobre o nome REAL da tabela no banco (pós @@map) a partir do nome do
+// model no Prisma Client. Necessário porque nomes com mais de uma palavra
+// (ex: MonthClosing -> month_closing) divergem do accessor camelCase
+// (monthClosing) — algo que passou despercebido com bookmaker/tipster/bet
+// só porque eles têm nomes de uma palavra só.
+function getDbTableName(modelAccessorName: string): string {
+    const modelName =
+        modelAccessorName.charAt(0).toUpperCase() + modelAccessorName.slice(1)
+    const model = Prisma.dmmf.datamodel.models.find(m => m.name === modelName)
+
+    // Se o model nem existe ainda no schema, não há como saber o nome real
+    // da tabela — devolvemos o próprio nome do JSON como fallback, que
+    // simplesmente não vai ser encontrado no banco (mesmo comportamento já
+    // esperado: tabela "adiantada" que ainda não existe é pulada).
+    return model?.dbName ?? modelAccessorName
+}
+
 // Confere se a tabela já existe no banco, antes de tentar usá-la — assim
 // o db.json pode "adiantar" dados de entidades que ainda não foram criadas
 // (ex: Tipster), sem quebrar o seed das que já existem.
@@ -70,7 +87,8 @@ function normalizeRow(
 }
 
 async function seedTable(table: TableFixture) {
-    const exists = await tableExists(table.name)
+    const dbTableName = getDbTableName(table.name)
+    const exists = await tableExists(dbTableName)
 
     if (!exists) {
         console.warn(
@@ -80,9 +98,8 @@ async function seedTable(table: TableFixture) {
         return
     }
 
-    // (prisma as any)[table.name] acessa o model certo dinamicamente, pelo
-    // nome — é isso que permite o script funcionar para qualquer tabela nova
-    // sem precisar editar este arquivo.
+    // (prisma as any)[table.name] continua usando o nome do MODEL (accessor
+    // do Prisma Client) — isso não muda, é diferente do nome real da tabela.
     const model = (prisma as any)[table.name]
 
     if (!model) {
@@ -93,10 +110,9 @@ async function seedTable(table: TableFixture) {
         return
     }
 
-    // TRUNCATE ... RESTART IDENTITY apaga tudo e reinicia a contagem de id —
-    // garante que "yarn setup" sempre deixe o banco no mesmo estado.
+    // TRUNCATE precisa do nome REAL da tabela (pós @@map), não do accessor.
     await prisma.$executeRawUnsafe(
-        `TRUNCATE TABLE "${table.name}" RESTART IDENTITY CASCADE;`
+        `TRUNCATE TABLE "${dbTableName}" RESTART IDENTITY CASCADE;`
     )
 
     if (table.rows.length > 0) {
