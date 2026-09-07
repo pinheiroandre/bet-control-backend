@@ -60,7 +60,7 @@ describe('BetService (integration)', () => {
             await withRollback(async tx => {
                 const service = new BetService(tx)
 
-                await tx.transaction.create({
+                await tx.balanceMovement.create({
                     data: {
                         type: 'BONUS_CREDIT',
                         amount: 50,
@@ -325,7 +325,7 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 // Sem isso, não existe saldo de bônus disponível pra apostar.
-                await tx.transaction.create({
+                await tx.balanceMovement.create({
                     data: {
                         type: 'BONUS_CREDIT',
                         amount: 50,

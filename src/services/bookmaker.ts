@@ -55,14 +55,20 @@ export class BookmakerService {
     // Impede excluir uma bookmaker que já tem histórico — sem isso, o
     // Postgres recusaria com um erro cru de chave estrangeira.
     private async validateNoRelatedRecords(id: string) {
-        const [betCount, transactionCount, balanceClosingCount] =
+        const [betCount, balanceMovementCount, balanceClosingCount] =
             await Promise.all([
                 this.prisma.bet.count({ where: { bookmakerId: id } }),
-                this.prisma.transaction.count({ where: { bookmakerId: id } }),
+                this.prisma.balanceMovement.count({
+                    where: { bookmakerId: id }
+                }),
                 this.prisma.balanceClosing.count({ where: { bookmakerId: id } })
             ])
 
-        if (betCount > 0 || transactionCount > 0 || balanceClosingCount > 0) {
+        if (
+            betCount > 0 ||
+            balanceMovementCount > 0 ||
+            balanceClosingCount > 0
+        ) {
             throw new Error(
                 'Não é possível excluir uma casa de aposta que já possui lançamentos'
             )

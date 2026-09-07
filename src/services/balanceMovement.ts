@@ -1,42 +1,42 @@
 import 'reflect-metadata'
-import { Prisma, PrismaClient, TransactionType } from '@prisma/client'
+import { Prisma, PrismaClient, BalanceMovementType } from '@prisma/client'
 import { Decimal } from '@prisma/client/runtime/library'
 import { injectable, inject } from 'tsyringe'
 import { TYPES } from '../di/types'
 import { calculateBalance } from './balanceCalculator'
 import { assertMonthIsOpen } from './monthClosingGuard'
 
-interface CreateTransactionInput {
-    type: TransactionType
+interface CreateBalanceMovementInput {
+    type: BalanceMovementType
     amount: number | Decimal
     date: Date
     description?: string
     bookmakerId: string
 }
 
-interface UpdateTransactionInput {
+interface UpdateBalanceMovementInput {
     id: string
-    type?: TransactionType
+    type?: BalanceMovementType
     amount?: number | Decimal
     date?: Date
     description?: string
 }
 
-interface FindAllTransactionParams {
+interface FindAllBalanceMovementParams {
     bookmakerId?: string
-    type?: TransactionType
+    type?: BalanceMovementType
 }
 
 type PrismaOrTransaction = PrismaClient | Prisma.TransactionClient
 
 @injectable()
-export class TransactionService {
-    private repository: PrismaOrTransaction['transaction']
+export class BalanceMovementService {
+    private repository: PrismaOrTransaction['balanceMovement']
 
     constructor(
         @inject(TYPES.PrismaClient) private prisma: PrismaOrTransaction
     ) {
-        this.repository = this.prisma.transaction
+        this.repository = this.prisma.balanceMovement
     }
 
     private async validateBookmaker(bookmakerId: string) {
@@ -71,13 +71,13 @@ export class TransactionService {
         bookmakerId: string,
         amount: number | Decimal,
         date: Date,
-        excludeTransactionId?: string
+        excludeBalanceMovementId?: string
     ) {
         const available = await calculateBalance(this.prisma, {
             bookmakerId,
             isBonus: false,
             asOf: date,
-            excludeTransactionId
+            excludeBalanceMovementId
         })
 
         if (new Decimal(amount).greaterThan(available)) {
@@ -85,13 +85,13 @@ export class TransactionService {
         }
     }
 
-    async create(input: CreateTransactionInput) {
+    async create(input: CreateBalanceMovementInput) {
         await this.validateBookmaker(input.bookmakerId)
         this.validateAmount(input.amount)
         this.validateDate(input.date)
         await assertMonthIsOpen(this.prisma, input.date)
 
-        if (input.type === TransactionType.WITHDRAWAL) {
+        if (input.type === BalanceMovementType.WITHDRAWAL) {
             await this.validateWithdrawalBalance(
                 input.bookmakerId,
                 input.amount,
@@ -110,7 +110,7 @@ export class TransactionService {
         })
     }
 
-    async update(input: UpdateTransactionInput) {
+    async update(input: UpdateBalanceMovementInput) {
         const existing = await this.findById(input.id)
         const toUpdated = { ...existing, ...input }
 
@@ -118,7 +118,7 @@ export class TransactionService {
         this.validateDate(toUpdated.date)
         await assertMonthIsOpen(this.prisma, toUpdated.date)
 
-        if (toUpdated.type === TransactionType.WITHDRAWAL) {
+        if (toUpdated.type === BalanceMovementType.WITHDRAWAL) {
             await this.validateWithdrawalBalance(
                 toUpdated.bookmakerId,
                 toUpdated.amount,
@@ -149,22 +149,27 @@ export class TransactionService {
     }
 
     async findById(id: string) {
-        const transaction = await this.repository.findUnique({ where: { id } })
+        const balanceMovement = await this.repository.findUnique({
+            where: { id }
+        })
 
-        if (!transaction) {
+        if (!balanceMovement) {
             throw new Error('Transação não encontrada')
         }
 
-        return transaction
+        return balanceMovement
     }
 
-    async findAll(params?: FindAllTransactionParams) {
+    async findAll(params?: FindAllBalanceMovementParams) {
         return this.repository.findMany({
             where: {
                 ...(params?.bookmakerId
                     ? { bookmakerId: params.bookmakerId }
                     : {}),
                 ...(params?.type ? { type: params.type } : {})
+            },
+            include: {
+                bookmaker: true
             }
         })
     }

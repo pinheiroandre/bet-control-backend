@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client'
+import { BalanceMovementType } from '@prisma/client'
 import { describe, it, expect, afterAll } from 'vitest'
 import { withRollback, prisma } from '../../test/withRollback'
 import { BalanceService } from '../balance'
@@ -10,7 +10,7 @@ afterAll(async () => {
 const ID_BET365 = 'd91b64b7-a8c7-417e-bbbb-46e505cad17a'
 
 describe('BalanceService (integration)', () => {
-    it('should return the initialBalance as real balance when there are no movements', async () => {
+    it('should return the initialBalance as real balance when there are no balance movements', async () => {
         await withRollback(async tx => {
             const service = new BalanceService(tx)
 
@@ -37,9 +37,9 @@ describe('BalanceService (integration)', () => {
         await withRollback(async tx => {
             const service = new BalanceService(tx)
 
-            await tx.transaction.create({
+            await tx.balanceMovement.create({
                 data: {
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -56,9 +56,9 @@ describe('BalanceService (integration)', () => {
         await withRollback(async tx => {
             const service = new BalanceService(tx)
 
-            await tx.transaction.create({
+            await tx.balanceMovement.create({
                 data: {
-                    type: TransactionType.BONUS_CREDIT,
+                    type: BalanceMovementType.BONUS_CREDIT,
                     amount: 30,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365

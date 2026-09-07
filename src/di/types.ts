@@ -6,7 +6,7 @@ export const TYPES = {
     TipsterService: Symbol.for('TipsterService'),
     MonthClosingService: Symbol.for('MonthClosingService'),
     BalanceClosingService: Symbol.for('BalanceClosingService'),
-    TransactionService: Symbol.for('TransactionService'),
+    BalanceMovementService: Symbol.for('BalanceMovement'),
     BalanceService: Symbol.for('BalanceService'),
     ClosingOrchestratorService: Symbol.for('ClosingOrchestratorService')
 }

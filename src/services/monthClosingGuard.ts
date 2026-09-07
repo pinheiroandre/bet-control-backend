@@ -7,7 +7,7 @@ function normalizeToFirstOfMonth(date: Date): Date {
 }
 
 // Garante que a data informada não caia num mês já fechado — usado por
-// qualquer entidade que lança ou edita movimentações (Bet, Transaction).
+// qualquer entidade que lança ou edita movimentações (Bet, Movement Balance).
 // Compartilhado para não duplicar essa regra em cada service.
 export async function assertMonthIsOpen(
     prisma: PrismaOrTransaction,

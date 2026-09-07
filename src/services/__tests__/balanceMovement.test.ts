@@ -1,7 +1,7 @@
-import { TransactionType } from '@prisma/client'
+import { BalanceMovementType } from '@prisma/client'
 import { describe, it, expect, afterAll } from 'vitest'
 import { withRollback, prisma } from '../../test/withRollback'
-import { TransactionService } from '../transaction'
+import { BalanceMovementService } from '../balanceMovement'
 
 afterAll(async () => {
     await prisma.$disconnect()
@@ -13,65 +13,65 @@ const ID_BET365 = 'd91b64b7-a8c7-417e-bbbb-46e505cad17a'
 // Julho/2026 já está fechado no seed — usamos datas de setembro/2026 (mês
 // aberto) para os casos de sucesso, e datas de julho para testar a trava
 // de mês fechado.
-describe('TransactionService (integration)', () => {
+describe('BalanceMovementService (integration)', () => {
     describe('create', () => {
         it('should create a deposit', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const result = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
 
                 expect(result.id).toBeDefined()
-                expect(result.type).toBe(TransactionType.DEPOSIT)
+                expect(result.type).toBe(BalanceMovementType.DEPOSIT)
                 expect(Number(result.amount)).toBe(50)
             })
         })
 
         it('should create a withdrawal within the available balance', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const result = await service.create({
-                    type: TransactionType.WITHDRAWAL,
+                    type: BalanceMovementType.WITHDRAWAL,
                     amount: 30,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
 
-                expect(result.type).toBe(TransactionType.WITHDRAWAL)
+                expect(result.type).toBe(BalanceMovementType.WITHDRAWAL)
                 expect(Number(result.amount)).toBe(30)
             })
         })
 
         it('should create a bonus credit', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const result = await service.create({
-                    type: TransactionType.BONUS_CREDIT,
+                    type: BalanceMovementType.BONUS_CREDIT,
                     amount: 20,
                     date: new Date('2026-09-05'),
                     description: 'Cortesia por evento cancelado',
                     bookmakerId: ID_BET365
                 })
 
-                expect(result.type).toBe(TransactionType.BONUS_CREDIT)
+                expect(result.type).toBe(BalanceMovementType.BONUS_CREDIT)
                 expect(result.description).toBe('Cortesia por evento cancelado')
             })
         })
 
-        it("shouldn't create a transaction for a bookmaker that doesn't exist", async () => {
+        it("shouldn't create a balance movement for a bookmaker that doesn't exist", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(
                     service.create({
-                        type: TransactionType.DEPOSIT,
+                        type: BalanceMovementType.DEPOSIT,
                         amount: 50,
                         date: new Date('2026-09-05'),
                         bookmakerId: INEXISTENT
@@ -80,13 +80,13 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't create a transaction with an amount of zero or less", async () => {
+        it("shouldn't create a balance movement of zero or less", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(
                     service.create({
-                        type: TransactionType.DEPOSIT,
+                        type: BalanceMovementType.DEPOSIT,
                         amount: 0,
                         date: new Date('2026-09-05'),
                         bookmakerId: ID_BET365
@@ -95,13 +95,13 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't create a transaction dated in a month that is already closed", async () => {
+        it("shouldn't create a balance movementth that is already closed", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(
                     service.create({
-                        type: TransactionType.DEPOSIT,
+                        type: BalanceMovementType.DEPOSIT,
                         amount: 50,
                         date: new Date('2026-07-15'),
                         bookmakerId: ID_BET365
@@ -114,11 +114,11 @@ describe('TransactionService (integration)', () => {
 
         it("shouldn't create a withdrawal beyond the available balance", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(
                     service.create({
-                        type: TransactionType.WITHDRAWAL,
+                        type: BalanceMovementType.WITHDRAWAL,
                         amount: 150,
                         date: new Date('2026-09-05'),
                         bookmakerId: ID_BET365
@@ -129,12 +129,12 @@ describe('TransactionService (integration)', () => {
     })
 
     describe('update', () => {
-        it('should update the amount and description of an existing transaction', async () => {
+        it('should update the amount and description of an existing balance movement', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -151,9 +151,9 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't update a transaction that doesn't exist", async () => {
+        it("shouldn't update a balance movement that doesn't exist", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(
                     service.update({ id: INEXISTENT, amount: 10 })
@@ -161,12 +161,12 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't update a transaction to a date in a month that is already closed", async () => {
+        it("shouldn't update a balance movement to a date in a month that is already closed", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -185,10 +185,10 @@ describe('TransactionService (integration)', () => {
 
         it("shouldn't update a withdrawal beyond the available balance", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.WITHDRAWAL,
+                    type: BalanceMovementType.WITHDRAWAL,
                     amount: 30,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -202,12 +202,12 @@ describe('TransactionService (integration)', () => {
     })
 
     describe('delete', () => {
-        it('should delete an existing transaction', async () => {
+        it('should delete an existing balance movement', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -221,9 +221,9 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't delete a transaction that doesn't exist", async () => {
+        it("shouldn't delete a balance movement that doesn't exist", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(service.delete(INEXISTENT)).rejects.toThrow(
                     'Transação não encontrada'
@@ -231,13 +231,13 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't delete a transaction dated in a month that is already closed", async () => {
+        it("shouldn't delete a balance movement dated in a month that is already closed", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
-                const legacyTransaction = await tx.transaction.create({
+                const legacyBalanceMovement = await tx.balanceMovement.create({
                     data: {
-                        type: TransactionType.DEPOSIT,
+                        type: BalanceMovementType.DEPOSIT,
                         amount: 50,
                         date: new Date('2026-07-10'),
                         bookmakerId: ID_BET365
@@ -245,7 +245,7 @@ describe('TransactionService (integration)', () => {
                 })
 
                 await expect(
-                    service.delete(legacyTransaction.id)
+                    service.delete(legacyBalanceMovement.id)
                 ).rejects.toThrow(
                     'Não é possível lançar ou editar em um mês já fechado'
                 )
@@ -254,12 +254,12 @@ describe('TransactionService (integration)', () => {
     })
 
     describe('findById', () => {
-        it('should find a transaction by id', async () => {
+        it('should find a balance movement by id', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
@@ -271,9 +271,9 @@ describe('TransactionService (integration)', () => {
             })
         })
 
-        it("shouldn't find a transaction that doesn't exist", async () => {
+        it("shouldn't find a balance movement that doesn't exist", async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await expect(service.findById(INEXISTENT)).rejects.toThrow(
                     'Transação não encontrada'
@@ -285,16 +285,16 @@ describe('TransactionService (integration)', () => {
     describe('findAll', () => {
         it('should filter by bookmakerId', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
                 await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 70,
                     date: new Date('2026-09-05'),
                     bookmakerId: '0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7'
@@ -309,45 +309,49 @@ describe('TransactionService (integration)', () => {
 
         it('should filter by type', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
                 await service.create({
-                    type: TransactionType.BONUS_CREDIT,
+                    type: BalanceMovementType.BONUS_CREDIT,
                     amount: 20,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
 
                 const result = await service.findAll({
-                    type: TransactionType.BONUS_CREDIT
+                    type: BalanceMovementType.BONUS_CREDIT
                 })
-                const types = result.map(transaction => transaction.type)
+                const types = result.map(
+                    balanceMovement => balanceMovement.type
+                )
 
                 expect(
-                    types.every(type => type === TransactionType.BONUS_CREDIT)
+                    types.every(
+                        type => type === BalanceMovementType.BONUS_CREDIT
+                    )
                 ).toBe(true)
             })
         })
 
-        it('should return all transactions when no filter is informed', async () => {
+        it('should return all balanceMovements when no filter is informed', async () => {
             await withRollback(async tx => {
-                const service = new TransactionService(tx)
+                const service = new BalanceMovementService(tx)
 
                 const created = await service.create({
-                    type: TransactionType.DEPOSIT,
+                    type: BalanceMovementType.DEPOSIT,
                     amount: 50,
                     date: new Date('2026-09-05'),
                     bookmakerId: ID_BET365
                 })
 
                 const result = await service.findAll()
-                const ids = result.map(transaction => transaction.id)
+                const ids = result.map(balanceMovement => balanceMovement.id)
 
                 expect(ids).toContain(created.id)
             })

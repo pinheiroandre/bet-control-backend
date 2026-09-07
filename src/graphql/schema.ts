@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { buildSchema } from 'type-graphql'
 import { container } from '../di/container'
+import { BalanceMovementResolver } from './resolvers/balance-movement'
 import { BookmakerResolver } from './resolvers/bookmaker'
 import { TipsterResolver } from './resolvers/tipster'
 
@@ -13,7 +14,11 @@ import { TipsterResolver } from './resolvers/tipster'
 // dependências certas (como o BookmakerService) no construtor de cada um".
 export function createSchema() {
     return buildSchema({
-        resolvers: [BookmakerResolver, TipsterResolver],
+        resolvers: [
+            BookmakerResolver,
+            TipsterResolver,
+            BalanceMovementResolver
+        ],
         // Quando criar o resolver de Bet, basta somar ele nesse array.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         container: { get: cls => container.resolve(cls) }

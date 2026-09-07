@@ -44,7 +44,7 @@ describe('ClosingOrchestratorService (integration)', () => {
             }
         })
 
-        it("shouldn't take into account movements dated after the month being closed", async () => {
+        it("shouldn't take into account balance movements dated after the month being closed", async () => {
             vi.useFakeTimers()
             vi.setSystemTime(FROZEN_TODAY)
 

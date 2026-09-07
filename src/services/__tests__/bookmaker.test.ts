@@ -194,11 +194,11 @@ describe('BookmakerService (integration)', () => {
             })
         })
 
-        it("shouldn't delete a bookmaker that already has transactions", async () => {
+        it("shouldn't delete a bookmaker that already has balance movements", async () => {
             await withRollback(async tx => {
                 const service = new BookmakerService(tx)
 
-                await tx.transaction.create({
+                await tx.balanceMovement.create({
                     data: {
                         type: 'DEPOSIT',
                         amount: 50,

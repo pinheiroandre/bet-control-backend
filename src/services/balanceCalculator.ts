@@ -1,4 +1,4 @@
-import { BetStatus, TransactionType } from '@prisma/client'
+import { BetStatus, BalanceMovementType } from '@prisma/client'
 import { Decimal } from '@prisma/client/runtime/library'
 import type { Prisma, PrismaClient } from '@prisma/client'
 
@@ -9,11 +9,11 @@ interface CalculateBalanceOptions {
     isBonus: boolean
     // Considera só movimentações até essa data (inclusive) — default é agora.
     asOf?: Date
-    // Exclui uma Bet ou Transaction específica da soma — usado ao validar a
+    // Exclui uma Bet ou BalanceMovement específica da soma — usado ao validar a
     // EDIÇÃO de um registro que já existe (senão o valor antigo dele seria
     // contado junto com o novo).
     excludeBetId?: string
-    excludeTransactionId?: string
+    excludeBalanceMovementId?: string
 }
 
 function addMonths(date: Date, months: number): Date {
@@ -30,7 +30,8 @@ export async function calculateBalance(
     prisma: PrismaOrTransaction,
     options: CalculateBalanceOptions
 ) {
-    const { bookmakerId, isBonus, excludeBetId, excludeTransactionId } = options
+    const { bookmakerId, isBonus, excludeBetId, excludeBalanceMovementId } =
+        options
     const asOf = options.asOf ?? new Date()
 
     const bookmaker = await prisma.bookmaker.findUnique({
@@ -85,15 +86,20 @@ export async function calculateBalance(
     const totalStake = stakeSum._sum.stake ?? new Decimal(0)
     const totalPayout = payoutSum._sum.payout ?? new Decimal(0)
 
-    const transactionWhere = {
+    const balanceMovementWhere = {
         bookmakerId,
         date: dateFilter,
-        ...(excludeTransactionId ? { id: { not: excludeTransactionId } } : {})
+        ...(excludeBalanceMovementId
+            ? { id: { not: excludeBalanceMovementId } }
+            : {})
     }
 
     if (isBonus) {
-        const bonusCreditSum = await prisma.transaction.aggregate({
-            where: { ...transactionWhere, type: TransactionType.BONUS_CREDIT },
+        const bonusCreditSum = await prisma.balanceMovement.aggregate({
+            where: {
+                ...balanceMovementWhere,
+                type: BalanceMovementType.BONUS_CREDIT
+            },
             _sum: { amount: true }
         })
 
@@ -105,13 +111,16 @@ export async function calculateBalance(
             .plus(totalPayout)
     }
 
-    const depositSum = await prisma.transaction.aggregate({
-        where: { ...transactionWhere, type: TransactionType.DEPOSIT },
+    const depositSum = await prisma.balanceMovement.aggregate({
+        where: { ...balanceMovementWhere, type: BalanceMovementType.DEPOSIT },
         _sum: { amount: true }
     })
 
-    const withdrawalSum = await prisma.transaction.aggregate({
-        where: { ...transactionWhere, type: TransactionType.WITHDRAWAL },
+    const withdrawalSum = await prisma.balanceMovement.aggregate({
+        where: {
+            ...balanceMovementWhere,
+            type: BalanceMovementType.WITHDRAWAL
+        },
         _sum: { amount: true }
     })
 
