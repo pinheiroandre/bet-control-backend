@@ -42,7 +42,7 @@ export class BalanceMovementResolver {
             id: balanceMovement.id,
             amount: balanceMovement.amount,
             bookmaker: balanceMovement.bookmaker,
-            date: balanceMovement.date,
+            date: balanceMovement.date.toISOString().split('T')[0],
             type: balanceMovement.type,
             description: balanceMovement.description
         }
