@@ -40,3 +40,24 @@ export class CreateBalanceMovementInput {
     @Field(() => String)
     bookmakerId!: string
 }
+
+@InputType()
+export class UpdateBalanceMovementInput {
+    @Field(() => String)
+    id!: string
+
+    @Field(() => String, { nullable: true })
+    description?: string
+
+    @Field(() => BalanceMovementType, { nullable: true })
+    type?: BalanceMovementType
+
+    @Field(() => Float, { nullable: true })
+    amount?: number
+
+    @Field(() => String, { nullable: true })
+    date?: string
+
+    @Field(() => String, { nullable: true })
+    bookmakerId?: string
+}

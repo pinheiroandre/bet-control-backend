@@ -150,7 +150,8 @@ export class BalanceMovementService {
 
     async findById(id: string) {
         const balanceMovement = await this.repository.findUnique({
-            where: { id }
+            where: { id },
+            include: { bookmaker: true }
         })
 
         if (!balanceMovement) {
@@ -168,9 +169,7 @@ export class BalanceMovementService {
                     : {}),
                 ...(params?.type ? { type: params.type } : {})
             },
-            include: {
-                bookmaker: true
-            }
+            include: { bookmaker: true }
         })
     }
 }

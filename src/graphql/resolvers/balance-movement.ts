@@ -5,7 +5,8 @@ import { TYPES } from '../../di/types'
 import { BalanceMovementService } from '../../services/balanceMovement'
 import {
     CreateBalanceMovementInput,
-    BalanceMovement
+    BalanceMovement,
+    UpdateBalanceMovementInput
 } from '../types/balance-movement'
 
 @Resolver(() => BalanceMovement)
@@ -23,6 +24,15 @@ export class BalanceMovementResolver {
         return records.map(this.toGraphQL)
     }
 
+    @Query(() => BalanceMovement)
+    async balanceMovement(
+        @Arg('id', () => String) id: string
+    ): Promise<BalanceMovement> {
+        const record = await this.service.findById(id)
+
+        return this.toGraphQL(record)
+    }
+
     @Mutation(() => BalanceMovement)
     async createBalanceMovement(
         @Arg('input', () => CreateBalanceMovementInput)
@@ -31,6 +41,19 @@ export class BalanceMovementResolver {
         const record = await this.service.create({
             ...input,
             date: new Date(input.date)
+        })
+
+        return this.toGraphQL(record)
+    }
+
+    @Mutation(() => BalanceMovement)
+    async updateBalanceMovement(
+        @Arg('input', () => UpdateBalanceMovementInput)
+        input: UpdateBalanceMovementInput
+    ): Promise<BalanceMovement> {
+        const record = await this.service.update({
+            ...input,
+            date: input.date ? new Date(input.date) : undefined
         })
 
         return this.toGraphQL(record)
