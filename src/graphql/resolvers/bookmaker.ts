@@ -3,7 +3,11 @@ import { injectable, inject } from 'tsyringe'
 import { Arg, Mutation, Query, Resolver } from 'type-graphql'
 import { TYPES } from '../../di/types'
 import { BookmakerService } from '../../services/bookmaker'
-import { Bookmaker, CreateBookmakerInput } from '../types/bookmaker'
+import {
+    Bookmaker,
+    CreateBookmakerInput,
+    UpdateBookmakerInput
+} from '../types/bookmaker'
 
 @Resolver(() => Bookmaker)
 @injectable()
@@ -22,6 +26,13 @@ export class BookmakerResolver {
         return records.map(this.toGraphQL)
     }
 
+    @Query(() => Bookmaker)
+    async bookmaker(@Arg('id', () => String) id: string): Promise<Bookmaker> {
+        const record = await this.service.findById(id)
+
+        return this.toGraphQL(record)
+    }
+
     @Mutation(() => Bookmaker)
     async createBookmaker(
         @Arg('input', () => CreateBookmakerInput) input: CreateBookmakerInput
@@ -29,6 +40,20 @@ export class BookmakerResolver {
         const record = await this.service.create({
             ...input,
             initialBalanceDate: new Date(input.initialBalanceDate)
+        })
+
+        return this.toGraphQL(record)
+    }
+
+    @Mutation(() => Bookmaker)
+    async updateBookmaker(
+        @Arg('input', () => UpdateBookmakerInput) input: UpdateBookmakerInput
+    ): Promise<Bookmaker> {
+        const record = await this.service.update({
+            ...input,
+            initialBalanceDate: input.initialBalanceDate
+                ? new Date(input.initialBalanceDate)
+                : undefined
         })
 
         return this.toGraphQL(record)

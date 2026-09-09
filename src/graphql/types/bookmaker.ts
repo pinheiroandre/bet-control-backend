@@ -26,3 +26,18 @@ export class CreateBookmakerInput {
     @Field(() => String)
     initialBalanceDate!: string
 }
+
+@InputType()
+export class UpdateBookmakerInput {
+    @Field(() => String)
+    id!: string
+
+    @Field(() => String, { nullable: true })
+    description?: string
+
+    @Field(() => Float, { nullable: true })
+    initialBalance?: number
+
+    @Field(() => String, { nullable: true })
+    initialBalanceDate?: string
+}
