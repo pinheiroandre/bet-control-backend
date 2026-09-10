@@ -59,6 +59,15 @@ export class BalanceMovementResolver {
         return this.toGraphQL(record)
     }
 
+    @Mutation(() => BalanceMovement)
+    async deleteBalanceMovement(
+        @Arg('id', () => String) id: string
+    ): Promise<BalanceMovement> {
+        const record = await this.service.delete(id)
+
+        return this.toGraphQL(record)
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private toGraphQL(balanceMovement: any): BalanceMovement {
         return {

@@ -59,6 +59,15 @@ export class BookmakerResolver {
         return this.toGraphQL(record)
     }
 
+    @Mutation(() => Bookmaker)
+    async deleteBookmaker(
+        @Arg('id', () => String) id: string
+    ): Promise<Bookmaker> {
+        const record = await this.service.delete(id)
+
+        return this.toGraphQL(record)
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private toGraphQL(bookmaker: any): Bookmaker {
         return {
