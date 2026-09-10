@@ -49,6 +49,13 @@ export class TipsterResolver {
         return this.toGraphQL(record)
     }
 
+    @Mutation(() => Tipster)
+    async deleteTipster(@Arg('id', () => String) id: string): Promise<Tipster> {
+        const record = await this.service.delete(id)
+
+        return this.toGraphQL(record)
+    }
+
     private toGraphQL(tipster: Tipster): Tipster {
         return {
             id: tipster.id,
