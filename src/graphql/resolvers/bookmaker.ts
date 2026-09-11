@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { injectable, inject } from 'tsyringe'
 import { Arg, Mutation, Query, Resolver } from 'type-graphql'
 import { TYPES } from '../../di/types'
+import { toIsoString } from '../../lib/toIsoString'
 import { BookmakerService } from '../../services/bookmaker'
 import {
     Bookmaker,
@@ -74,9 +75,7 @@ export class BookmakerResolver {
             id: bookmaker.id,
             description: bookmaker.description,
             initialBalance: Number(bookmaker.initialBalance),
-            initialBalanceDate: bookmaker.initialBalanceDate
-                .toISOString()
-                .split('T')[0]
+            initialBalanceDate: toIsoString(bookmaker.initialBalanceDate)
         }
     }
 }

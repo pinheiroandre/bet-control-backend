@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { injectable, inject } from 'tsyringe'
 import { Arg, Mutation, Query, Resolver } from 'type-graphql'
 import { TYPES } from '../../di/types'
+import { toIsoString } from '../../lib/toIsoString'
 import { BalanceMovementService } from '../../services/balanceMovement'
 import {
     CreateBalanceMovementInput,
@@ -74,7 +75,7 @@ export class BalanceMovementResolver {
             id: balanceMovement.id,
             amount: balanceMovement.amount,
             bookmaker: balanceMovement.bookmaker,
-            date: balanceMovement.date.toISOString().split('T')[0],
+            date: toIsoString(balanceMovement.date),
             type: balanceMovement.type,
             description: balanceMovement.description
         }
