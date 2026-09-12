@@ -1,5 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library'
 import { describe, it, expect, afterAll } from 'vitest'
+import BetStatus from '../../graphql/types/enum/bet-status'
 import { withRollback, prisma } from '../../test/withRollback'
 import { BetService } from '../bet'
 
@@ -46,7 +47,7 @@ describe('BetService (integration)', () => {
                 const result = await service.create({
                     ...NEW_BET,
                     payout,
-                    status: 'WON'
+                    status: BetStatus.WON
                 })
 
                 expect(result.id).toBeDefined()
@@ -103,7 +104,7 @@ describe('BetService (integration)', () => {
                 const result = await service.create({
                     ...NEW_BET,
                     payout,
-                    status: 'LOST'
+                    status: BetStatus.LOST
                 })
 
                 expect(result.id).toBeDefined()
@@ -119,7 +120,7 @@ describe('BetService (integration)', () => {
 
                 const result = await service.create({
                     ...NEW_BET,
-                    status: 'VOID'
+                    status: BetStatus.VOID
                 })
 
                 expect(result.id).toBeDefined()
@@ -137,7 +138,7 @@ describe('BetService (integration)', () => {
                 const result = await service.create({
                     ...NEW_BET,
                     payout,
-                    status: 'CASHED_OUT'
+                    status: BetStatus.CASHED_OUT
                 })
 
                 expect(result.id).toBeDefined()
@@ -155,7 +156,7 @@ describe('BetService (integration)', () => {
                 const result = await service.create({
                     ...NEW_BET,
                     payout,
-                    status: 'HALF_WON'
+                    status: BetStatus.HALF_WON
                 })
 
                 expect(result.id).toBeDefined()
@@ -173,7 +174,7 @@ describe('BetService (integration)', () => {
                 const result = await service.create({
                     ...NEW_BET,
                     payout,
-                    status: 'HALF_LOST'
+                    status: BetStatus.HALF_LOST
                 })
 
                 expect(result.id).toBeDefined()
@@ -248,7 +249,11 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.create({ ...NEW_BET, payout, status: 'PENDING' })
+                    service.create({
+                        ...NEW_BET,
+                        payout,
+                        status: BetStatus.PENDING
+                    })
                 ).rejects.toThrow(
                     'O status da aposta não pode ser pendente quando possui retorno'
                 )
@@ -261,7 +266,11 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.create({ ...NEW_BET, payout, status: 'LOST' })
+                    service.create({
+                        ...NEW_BET,
+                        payout,
+                        status: BetStatus.LOST
+                    })
                 ).rejects.toThrow(
                     'O status da aposta não pode ser perdido quando possui retorno'
                 )
@@ -275,7 +284,7 @@ describe('BetService (integration)', () => {
                 await expect(
                     service.create({
                         ...NEW_BET,
-                        status: 'VOID',
+                        status: BetStatus.VOID,
                         payout: new Decimal(5)
                     })
                 ).rejects.toThrow(
@@ -289,7 +298,7 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.create({ ...NEW_BET, status: 'CASHED_OUT' })
+                    service.create({ ...NEW_BET, status: BetStatus.CASHED_OUT })
                 ).rejects.toThrow(
                     'Aposta do tipo cashout necessita de valor de pagamento'
                 )
@@ -301,7 +310,7 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.create({ ...NEW_BET, status: 'HALF_WON' })
+                    service.create({ ...NEW_BET, status: BetStatus.HALF_WON })
                 ).rejects.toThrow(
                     'Aposta do tipo meio ganha necessita de valor de pagamento'
                 )
@@ -313,7 +322,7 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.create({ ...NEW_BET, status: 'HALF_LOST' })
+                    service.create({ ...NEW_BET, status: BetStatus.HALF_LOST })
                 ).rejects.toThrow(
                     'Aposta do tipo meio perdida necessita de valor de pagamento'
                 )
@@ -338,7 +347,7 @@ describe('BetService (integration)', () => {
                     ...NEW_BET,
                     bookmakerId: BET365_ID,
                     stakeIsBonus: true,
-                    status: 'VOID'
+                    status: BetStatus.VOID
                 })
 
                 expect(Number(result.payout)).toBe(Number(result.stake))
@@ -385,7 +394,7 @@ describe('BetService (integration)', () => {
 
                 const result = await service.update({
                     id: EXISTENT_BET,
-                    status: 'WON',
+                    status: BetStatus.WON,
                     payout
                 })
 
@@ -400,7 +409,7 @@ describe('BetService (integration)', () => {
 
                 const result = await service.update({
                     id: EXISTENT_BET,
-                    status: 'VOID'
+                    status: BetStatus.VOID
                 })
 
                 expect(result.status).toBe('VOID')
@@ -490,7 +499,7 @@ describe('BetService (integration)', () => {
                     service.update({
                         id: EXISTENT_BET,
                         payout: new Decimal(25),
-                        status: 'PENDING'
+                        status: BetStatus.PENDING
                     })
                 ).rejects.toThrow(
                     'O status da aposta não pode ser pendente quando possui retorno'
@@ -505,7 +514,7 @@ describe('BetService (integration)', () => {
                 await expect(
                     service.update({
                         id: EXISTENT_BET,
-                        status: 'VOID',
+                        status: BetStatus.VOID,
                         payout: new Decimal(5)
                     })
                 ).rejects.toThrow(
@@ -519,7 +528,10 @@ describe('BetService (integration)', () => {
                 const service = new BetService(tx)
 
                 await expect(
-                    service.update({ id: EXISTENT_BET, status: 'CASHED_OUT' })
+                    service.update({
+                        id: EXISTENT_BET,
+                        status: BetStatus.CASHED_OUT
+                    })
                 ).rejects.toThrow(
                     'Aposta do tipo cashout necessita de valor de pagamento'
                 )

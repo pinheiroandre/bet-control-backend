@@ -103,7 +103,7 @@ export class BetService {
             excludeBetId
         })
 
-        if (input.stake.greaterThan(available)) {
+        if (new Decimal(input.stake).greaterThan(available)) {
             throw new Error(
                 isBonus
                     ? 'Saldo de bonus insuficiente para essa aposta'
@@ -114,11 +114,19 @@ export class BetService {
 
     private normalizeBet(bet: NormalizeBet) {
         const completeBet = {
-            ...bet,
+            id: bet.id,
+            date: new Date(bet.date),
+            resolvedAt: bet.resolvedAt,
+            description: bet.description,
+            stake: bet.stake,
             payout: bet.payout ?? undefined,
             odd: bet.odd ?? undefined,
+            status: bet.status,
+            stakeIsBonus: bet.stakeIsBonus,
+            payoutIsBonus: bet.payoutIsBonus,
             observation: bet.observation ?? undefined,
-            tipsterId: bet.tipsterId ?? undefined
+            bookmakerId: bet.bookmakerId,
+            tipsterId: !!bet.tipsterId ? bet.tipsterId : undefined
         }
 
         const getPayout = () => {
@@ -222,15 +230,19 @@ export class BetService {
     }
 
     async findById(id: string) {
-        const bookmaker = await this.repository.findUnique({
-            where: { id }
+        const bet = await this.repository.findUnique({
+            where: { id },
+            include: {
+                bookmaker: true,
+                tipster: true
+            }
         })
 
-        if (!bookmaker) {
+        if (!bet) {
             throw new Error('Aposta não encontrada')
         }
 
-        return bookmaker
+        return bet
     }
 
     async findAll(params?: { identifier?: string }) {

@@ -1,7 +1,7 @@
-import { BetStatus } from '@prisma/client'
 import { Decimal } from '@prisma/client/runtime/library'
 import { Field, ObjectType, InputType, Float } from 'type-graphql'
 import { Bookmaker } from './bookmaker'
+import BetStatus from './enum/bet-status'
 import { Tipster } from './tipster'
 
 @ObjectType()
