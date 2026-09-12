@@ -17,6 +17,7 @@
     "dev:down": "docker compose down",
     "db:wait": "until docker exec controle-apostas-db pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done",
     "seed": "tsx prisma/seed.ts",
+    "dev:init": "yarn dev:up && yarn db:wait && yarn prisma:generate && yarn prisma:deploy",
     "setup": "yarn dev:up && yarn db:wait && yarn prisma:generate && yarn prisma:deploy && yarn seed",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

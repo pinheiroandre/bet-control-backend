@@ -84,14 +84,14 @@ enum BalanceMovementType {
 }
 
 model BalanceMovement {
-  id          String          @id @default(uuid()) @db.Uuid
+  id          String              @id @default(uuid()) @db.Uuid
   type        BalanceMovementType
-  amount      Decimal         @db.Decimal(10, 2)
-  date        DateTime        @db.Date
+  amount      Decimal             @db.Decimal(10, 2)
+  date        DateTime            @db.Date
   description String?
-  bookmakerId String          @map("bookmaker") @db.Uuid
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  bookmakerId String              @map("bookmaker") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
 
   bookmaker Bookmaker @relation(fields: [bookmakerId], references: [id])
 
