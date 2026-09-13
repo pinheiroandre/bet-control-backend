@@ -14,7 +14,7 @@ describe('BalanceService (integration)', () => {
         await withRollback(async tx => {
             const service = new BalanceService(tx)
 
-            const result = await service.getBalance(ID_BET365)
+            const result = await service.getBalanceByBookmaker(ID_BET365)
 
             expect(Number(result.real)).toBe(100)
             expect(Number(result.bonus)).toBe(0)
@@ -25,7 +25,7 @@ describe('BalanceService (integration)', () => {
         await withRollback(async tx => {
             const service = new BalanceService(tx)
 
-            const result = await service.getBalance(
+            const result = await service.getBalanceByBookmaker(
                 '0a84b9d7-cf33-4c2e-bf19-cd8400fea6b7'
             )
 
@@ -46,7 +46,7 @@ describe('BalanceService (integration)', () => {
                 }
             })
 
-            const result = await service.getBalance(ID_BET365)
+            const result = await service.getBalanceByBookmaker(ID_BET365)
 
             expect(Number(result.real)).toBe(150)
         })
@@ -65,7 +65,7 @@ describe('BalanceService (integration)', () => {
                 }
             })
 
-            const result = await service.getBalance(ID_BET365)
+            const result = await service.getBalanceByBookmaker(ID_BET365)
 
             expect(Number(result.bonus)).toBe(30)
         })
@@ -84,7 +84,7 @@ describe('BalanceService (integration)', () => {
                 }
             })
 
-            const result = await service.getBalance(ID_BET365)
+            const result = await service.getBalanceByBookmaker(ID_BET365)
 
             expect(Number(result.real)).toBe(500)
             expect(Number(result.bonus)).toBe(10)

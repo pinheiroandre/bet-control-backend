@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { buildSchema } from 'type-graphql'
 import { container } from '../di/container'
+import { BalanceResolver } from './resolvers/balance'
 import { BalanceMovementResolver } from './resolvers/balance-movement'
 import { BetResolver } from './resolvers/bet'
 import { BookmakerResolver } from './resolvers/bookmaker'
@@ -16,6 +17,7 @@ import { TipsterResolver } from './resolvers/tipster'
 export function createSchema() {
     return buildSchema({
         resolvers: [
+            BalanceResolver,
             BalanceMovementResolver,
             BetResolver,
             BookmakerResolver,
